@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>In Loving Memory of Lyle Tiegen</title>
+    <style>
+        /* --- CORE STYLES & MEMORIAL AESTHETIC --- */
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #f9f9f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        h1, h2, h3 { font-weight: normal; text-align: center; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        
+        /* --- LIVE COUNTERS (TOP RIGHT) --- */
+        #live-counters {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-family: 'Arial', sans-serif;
+            font-size: 14px;
+            z-index: 1000;
+            border: 1px solid #ccc;
+        }
+        .counter-item { margin-bottom: 5px; }
+        .counter-bold { font-weight: bold; color: #2c3e50; }
+
+        /* --- HERO SECTION --- */
+        #hero-section {
+            width: 100%;
+            height: 100vh; /* 100% of user screen height */
+            background-color: #ddd;
+            background-image: url('https://via.placeholder.com/1200x800?text=Lyle+Tiegen');
+            background-size: cover;
+            background-position: top center; /* Anchors image to top so faces aren't cut off */
+            position: relative;
+        }
+        #hero-upload-container {
+            display: none; /* Hidden until Admin unlocks */
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* --- EVENT DETAILS --- */
+        .event-details {
+            background: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            margin-top: -60px; /* Overlaps hero slightly */
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            z-index: 10;
+        }
+
+        /* --- FORMS & INPUTS --- */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="number"], select {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
+        }
+        button {
+            background-color: #4a5568; color: white; border: none; padding: 10px 20px;
+            cursor: pointer; border-radius: 4px; font-size: 16px; width: 100%; transition: 0.3s;
+        }
+        button:hover { background-color: #2d3748; }
+        .delete-btn { background-color: #e53e3e; margin-top: 10px; font-size: 12px; padding: 5px 10px;}
+        .delete-btn:hover { background-color: #c53030; }
+
+        /* --- GUEST LIST --- */
+        .guest-card {
+            background: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee;
+        }
+
+        /* --- GALLERY: MASONRY TILE LAYOUT --- */
+        .gallery-grid {
+            column-count: 3;
+            column-gap: 15px;
+            margin-top: 20px;
+        }
+        .gallery-item {
+            break-inside: avoid;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .gallery-item img {
+            width: 100%;
+            display: block;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        @media (max-width: 768px) { .gallery-grid { column-count: 2; } }
+        @media (max-width: 480px) { .gallery-grid { column-count: 1; } }
+
+        /* --- CUSTOM UPLOAD UI --- */
+        .gallery-upload-box { text-align: center; margin: 20px 0; padding: 20px; border: 2px dashed #ccc; background: #fff; border-radius: 8px;}
+        .custom-file-upload {
+            display: inline-block; padding: 12px 20px; cursor: pointer;
+            background-color: #edf2f7; color: #2d3748; border: 1px solid #cbd5e0; border-radius: 4px; font-weight: bold; transition: 0.2s;
+        }
+        .custom-file-upload:hover { background-color: #e2e8f0; }
+        #gallery-upload-input, #hero-upload-input { display: none; }
+        #image-preview { max-width: 150px; max-height: 150px; display: none; margin: 15px auto; border-radius: 8px; border: 2px solid #ccc; }
+
+        /* --- ADMIN GEAR & MODAL --- */
+        #admin-gear {
+            position: fixed; bottom: 20px; right: 20px; font-size: 30px; cursor: pointer;
+            background: white; border-radius: 50%; width: 50px; height: 50px;
+            display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            z-index: 1000; transition: transform 0.2s;
+        }
+        #admin-gear:hover { transform: scale(1.1); }
+        #admin-modal {
+            display: none; position: fixed; bottom: 80px; right: 20px; background: white;
+            padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000; width: 250px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="live-counters">
+        <div class="counter-item">Food/Gathering: <span id="count-gathering" class="counter-bold">0</span></div>
+        <div class="counter-item">Funeral Only: <span id="count-funeral" class="counter-bold">0</span></div>
+        <hr style="margin: 5px 0;">
+        <div class="counter-item">Total Attending: <span id="count-total" class="counter-bold">0</span></div>
+    </div>
+
+    <div id="hero-section">
+        <div id="hero-upload-container">
+            <label style="margin-bottom: 10px; display: block;">Admin: Update Main Photo</label>
+            <label class="custom-file-upload">
+                <input type="file" id="hero-upload-input" accept="image/*">
+                📸 Select Banner Photo
+            </label>
+            <button id="hero-upload-btn" style="margin-top:10px;">Upload & Replace</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="event-details">
+            <h1>Celebrating the Life of Lyle Tiegen</h1>
+            <p><strong>Funeral Service:</strong> [Insert Date] at [Insert Time]<br>
+            <em>[Insert Location Name & Address]</em></p>
+            <p><strong>Gathering & Food:</strong> Immediately following the service<br>
+            <em>[Insert Location for Gathering]</em></p>
+        </div>
+
+        <hr style="margin: 40px 0; border: 0; border-top: 1px solid #ddd;">
+
+        <h2>RSVP</h2>
+        <p style="text-align:center;">Please let us know if you can make it so we can prepare enough food.</p>
+        <form id="rsvp-form" style="background:#fff; padding:20px; border-radius:8px; border:1px solid #eee;">
+            <div class="form-group">
+                <label>First & Last Name</label>
+                <input type="text" id="rsvp-name" required placeholder="John Doe">
+            </div>
+            <div class="form-group">
+                <label>Total Number of People in Your Party</label>
+                <input type="number" id="rsvp-party" required min="1" placeholder="1">
+            </div>
+            <div class="form-group">
+                <label>Attendance Event</label>
+                <select id="rsvp-event" required>
+                    <option value="" disabled selected>Select an option...</option>
+                    <option value="Funeral & Gathering">Funeral & Gathering Afterwards</option>
+                    <option value="Funeral Only">Funeral Only</option>
+                </select>
+            </div>
+            <button type="submit">Submit RSVP</button>
+        </form>
+
+        <hr style="margin: 40px 0; border: 0; border-top: 1px solid #ddd;">
+
+        <h2>Guest List</h2>
+        <div id="guest-list-container">
+            </div>
+
+        <hr style="margin: 40px 0; border: 0; border-top: 1px solid #ddd;">
+
+        <h2>Memory Gallery</h2>
+        <p style="text-align:center;">Please upload your favorite photos of Lyle.</p>
+        
+        <div class="gallery-upload-box">
+            <label class="custom-file-upload">
+                <input type="file" id="gallery-upload-input" accept="image/*">
+                📸 Select a Photo
+            </label>
+            <img id="image-preview" src="" alt="Image Preview">
+            <button id="gallery-upload-btn" style="margin-top:15px; display:none;">Upload Photo to Gallery</button>
+            <p id="upload-status" style="color: green; font-size: 14px; display: none; margin-top: 10px;">Uploading...</p>
+        </div>
+
+        <div class="gallery-grid" id="gallery-container">
+            </div>
+    </div>
+
+    <div id="admin-gear" title="Admin Access">⚙️</div>
+    <div id="admin-modal">
+        <div id="admin-locked-view">
+            <label>Admin PIN:</label>
+            <input type="password" id="admin-pin" maxlength="4" style="margin-bottom:10px;">
+            <button id="admin-submit-btn">Unlock Admin Mode</button>
+        </div>
+        <div id="admin-unlocked-view" style="display:none;">
+            <p style="color: green; font-weight: bold; text-align: center; margin-top:0;">Admin Unlocked</p>
+            <button id="admin-lock-btn" style="background-color: #e53e3e;">Lock Admin Mode</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAGbLm8_NPZnq8RCDBtCaE-EQJz-dql7wA",
+            authDomain: "lyle-dfbcf.firebaseapp.com",
+            projectId: "lyle-dfbcf",
+            storageBucket: "lyle-dfbcf.firebasestorage.app",
+            messagingSenderId: "897369716932",
+            appId: "1:897369716932:web:5192dbd0dac68395fe3191"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // --- GLOBAL STATE ---
+        let isAdmin = false;
+        const SECRET_PIN = "1234"; // Admin PIN
+        let currentGuestsData = []; // Stores database snapshot locally to rebuild UI instantly
+
+        // --- ADMIN UI TOGGLE LOGIC ---
+        const gear = document.getElementById('admin-gear');
+        const modal = document.getElementById('admin-modal');
+        const lockedView = document.getElementById('admin-locked-view');
+        const unlockedView = document.getElementById('admin-unlocked-view');
+
+        gear.addEventListener('click', () => {
+            modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+        });
+
+        document.getElementById('admin-submit-btn').addEventListener('click', () => {
+            const pinInput = document.getElementById('admin-pin').value;
+            if (pinInput === SECRET_PIN) {
+                isAdmin = true;
+                lockedView.style.display = 'none';
+                unlockedView.style.display = 'block';
+                document.getElementById('hero-upload-container').style.display = 'block';
+                document.getElementById('admin-pin').value = ''; // clear input
+                
+                // Instantly re-render lists to show delete buttons
+                renderGuestList();
+                loadGallery();
+            } else {
+                alert("Incorrect PIN.");
+            }
+        });
+
+        document.getElementById('admin-lock-btn').addEventListener('click', () => {
+            isAdmin = false;
+            lockedView.style.display = 'block';
+            unlockedView.style.display = 'none';
+            document.getElementById('hero-upload-container').style.display = 'none';
+            modal.style.display = 'none'; // Auto close modal
+            
+            // Instantly re-render lists to hide delete buttons
+            renderGuestList();
+            loadGallery();
+            alert("Admin Mode Locked securely.");
+        });
+
+
+        // --- RSVP & GUEST LIST LOGIC ---
+        const rsvpForm = document.getElementById('rsvp-form');
+        rsvpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('rsvp-name').value;
+            const party = parseInt(document.getElementById('rsvp-party').value);
+            const event = document.getElementById('rsvp-event').value;
+
+            if (window.confirm(`You have entered ${party} amount of people for "${event}". Confirm?`)) {
+                try {
+                    await addDoc(collection(db, "rsvps"), {
+                        name: name, partySize: party, attendanceType: event, timestamp: new Date()
+                    });
+                    alert("Thank you, your RSVP has been saved.");
+                    rsvpForm.reset();
+                } catch (error) {
+                    console.error("Error: ", error);
+                    alert("Error saving RSVP. Please check connection.");
+                }
+            }
+        });
+
+        // Listen for DB changes and store to local array
+        const rsvpsQuery = query(collection(db, "rsvps"), orderBy("timestamp", "desc"));
+        onSnapshot(rsvpsQuery, (snapshot) => {
+            currentGuestsData = [];
+            let totalGathering = 0;
+            let totalFuneralOnly = 0;
+
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                currentGuestsData.push({ id: docSnap.id, ...data });
+                
+                if (data.attendanceType === "Funeral & Gathering") totalGathering += data.partySize;
+                else if (data.attendanceType === "Funeral Only") totalFuneralOnly += data.partySize;
+            });
+
+            // Update Counters
+            document.getElementById('count-gathering').innerText = totalGathering;
+            document.getElementById('count-funeral').innerText = totalFuneralOnly;
+            document.getElementById('count-total').innerText = totalGathering + totalFuneralOnly;
+
+            renderGuestList(); // Render immediately
+        });
+
+        function renderGuestList() {
+            const container = document.getElementById('guest-list-container');
+            container.innerHTML = ''; 
+
+            currentGuestsData.forEach(guest => {
+                const card = document.createElement('div');
+                card.className = 'guest-card';
+                card.innerHTML = `
+                    <div>
+                        <strong>${guest.name}</strong> - ${guest.partySize} people<br>
+                        <span style="font-size: 14px; color: #666;">Attending: ${guest.attendanceType}</span>
+                    </div>
+                `;
+
+                // Render Delete button if currently in Admin Mode
+                if (isAdmin) {
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'delete-btn';
+                    delBtn.innerText = 'Delete RSVP';
+                    delBtn.style.width = 'auto';
+                    delBtn.onclick = async () => {
+                        if(confirm(`Delete RSVP for ${guest.name}?`)) {
+                            await deleteDoc(doc(db, "rsvps", guest.id));
+                        }
+                    };
+                    card.appendChild(delBtn);
+                }
+                container.appendChild(card);
+            });
+        }
+
+
+        // --- HERO IMAGE LOGIC ---
+        const heroRef = ref(storage, 'hero/hero-image.jpg');
+        getDownloadURL(heroRef).then(url => {
+            document.getElementById('hero-section').style.backgroundImage = `url('${url}')`;
+        }).catch(() => console.log("Using placeholder hero."));
+
+        document.getElementById('hero-upload-btn').addEventListener('click', async () => {
+            const file = document.getElementById('hero-upload-input').files[0];
+            if (!file) return alert("Select an image first.");
+            try {
+                await uploadBytes(heroRef, file);
+                const url = await getDownloadURL(heroRef);
+                document.getElementById('hero-section').style.backgroundImage = `url('${url}')`;
+                alert("Hero image updated!");
+            } catch (error) { console.error("Upload failed", error); }
+        });
+
+
+        // --- GALLERY & LIVE PREVIEW LOGIC ---
+        const galleryInput = document.getElementById('gallery-upload-input');
+        const previewImg = document.getElementById('image-preview');
+        const galleryBtn = document.getElementById('gallery-upload-btn');
+        const uploadStatus = document.getElementById('upload-status');
+
+        // File Reader for Live Thumbnail Preview
+        galleryInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    previewImg.src = evt.target.result;
+                    previewImg.style.display = 'block';
+                    galleryBtn.style.display = 'block'; // Show upload button only after selection
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        galleryBtn.addEventListener('click', async () => {
+            const file = galleryInput.files[0];
+            if (!file) return;
+            
+            uploadStatus.style.display = 'block'; uploadStatus.innerText = 'Uploading...';
+            galleryBtn.style.display = 'none'; // hide during upload
+
+            const fileRef = ref(storage, `gallery/photo_${Date.now()}_${file.name}`);
+            try {
+                await uploadBytes(fileRef, file);
+                uploadStatus.innerText = 'Upload complete!';
+                
+                // Reset Preview UI
+                setTimeout(() => {
+                    uploadStatus.style.display = 'none';
+                    previewImg.style.display = 'none';
+                    previewImg.src = '';
+                    galleryInput.value = ""; 
+                }, 2000);
+                
+                loadGallery();
+            } catch (error) {
+                uploadStatus.innerText = 'Upload failed. Try again.'; uploadStatus.style.color = 'red';
+            }
+        });
+
+        async function loadGallery() {
+            const container = document.getElementById('gallery-container');
+            container.innerHTML = ''; 
+
+            const listRef = ref(storage, 'gallery');
+            try {
+                const res = await listAll(listRef);
+                res.items.forEach(async (itemRef) => {
+                    const url = await getDownloadURL(itemRef);
+                    
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'gallery-item';
+                    
+                    const img = document.createElement('img');
+                    img.src = url;
+                    itemDiv.appendChild(img);
+
+                    if (isAdmin) {
+                        const delBtn = document.createElement('button');
+                        delBtn.className = 'delete-btn';
+                        delBtn.innerText = 'Delete Photo';
+                        delBtn.onclick = async () => {
+                            if(confirm("Delete this photo?")) {
+                                await deleteObject(itemRef);
+                                loadGallery();
+                            }
+                        };
+                        itemDiv.appendChild(delBtn);
+                    }
+                    container.appendChild(itemDiv);
+                });
+            } catch (error) { console.error("Error loading gallery", error); }
+        }
+
+        loadGallery();
+    </script>
+</body>
+</html>
