@@ -197,7 +197,7 @@
         
         <div class="gallery-upload-box">
             <label class="custom-file-upload">
-                <input type="file" id="gallery-upload-input" accept="image/*">
+                <input type="file" id="gallery-upload-input" accept="image/*" multiple>
                 Select a Photo
             </label>
             <img id="image-preview" src="" alt="Image Preview">
@@ -381,6 +381,13 @@
         });
 
 
+
+
+
+
+
+        
+
         // --- GALLERY & LIVE PREVIEW LOGIC ---
         const galleryInput = document.getElementById('gallery-upload-input');
         const previewImg = document.getElementById('image-preview');
@@ -389,29 +396,50 @@
 
         // File Reader for Live Thumbnail Preview
         galleryInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                // Preview the FIRST image selected
                 const reader = new FileReader();
                 reader.onload = function(evt) {
                     previewImg.src = evt.target.result;
                     previewImg.style.display = 'block';
-                    galleryBtn.style.display = 'block'; // Show upload button only after selection
+                    
+                    // Update UI to show how many files are queued
+                    if(files.length > 1) {
+                        uploadStatus.style.display = 'block';
+                        uploadStatus.style.color = '#333';
+                        uploadStatus.innerText = `${files.length} photos selected. Previewing the first one.`;
+                    } else {
+                        uploadStatus.style.display = 'none';
+                    }
+                    
+                    // Change button text dynamically
+                    galleryBtn.innerText = `Upload ${files.length} Photo${files.length > 1 ? 's' : ''}`;
+                    galleryBtn.style.display = 'block'; 
                 }
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(files[0]);
             }
         });
 
         galleryBtn.addEventListener('click', async () => {
-            const file = galleryInput.files[0];
-            if (!file) return;
+            const files = galleryInput.files;
+            if (files.length === 0) return;
             
-            uploadStatus.style.display = 'block'; uploadStatus.innerText = 'Uploading...';
+            uploadStatus.style.display = 'block'; 
+            uploadStatus.style.color = 'green';
+            uploadStatus.innerText = `Uploading ${files.length} photo(s)... Please wait.`;
             galleryBtn.style.display = 'none'; // hide during upload
 
-            const fileRef = ref(storage, `gallery/photo_${Date.now()}_${file.name}`);
             try {
-                await uploadBytes(fileRef, file);
-                uploadStatus.innerText = 'Upload complete!';
+                // LOOP THROUGH ALL FILES AND UPLOAD
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    // Add the index 'i' to the filename so they don't overwrite each other
+                    const fileRef = ref(storage, `gallery/photo_${Date.now()}_${i}_${file.name}`);
+                    await uploadBytes(fileRef, file);
+                }
+                
+                uploadStatus.innerText = 'All uploads complete!';
                 
                 // Reset Preview UI
                 setTimeout(() => {
@@ -419,14 +447,24 @@
                     previewImg.style.display = 'none';
                     previewImg.src = '';
                     galleryInput.value = ""; 
-                }, 2000);
+                    galleryBtn.innerText = "Upload Photo to Gallery";
+                }, 3000);
                 
                 loadGallery();
             } catch (error) {
-                uploadStatus.innerText = 'Upload failed. Try again.'; uploadStatus.style.color = 'red';
+                console.error(error);
+                uploadStatus.innerText = 'Upload failed. Try again.'; 
+                uploadStatus.style.color = 'red';
             }
         });
 
+
+
+
+
+
+
+        
         async function loadGallery() {
             const container = document.getElementById('gallery-container');
             container.innerHTML = ''; 
@@ -465,6 +503,7 @@
     </script>
 </body>
 </html>
+
 
 
 
