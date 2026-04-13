@@ -3,117 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Personal Filter Cam</title>
+    <title>Wife Cam Pro</title>
     <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; background: #000; font-family: sans-serif; height: 100vh; overflow: hidden; }
+        body { margin: 0; background: #000; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        #camera-canvas { width: 100vw; height: 100vh; object-fit: cover; }
         
-        /* The Camera View */
-        #camera-canvas {
-            width: 100vw;
-            height: 100vh;
-            object-fit: cover;
-            display: block;
-        }
-
-        /* Filter UI Overlay */
-        .ui-container {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            padding: 30px 0;
-            background: linear-gradient(transparent, rgba(0,0,0,0.7));
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .lens-row {
-            display: flex;
-            overflow-x: auto;
-            width: 100%;
-            padding: 10px 20px;
-            gap: 15px;
-            scrollbar-width: none; /* Hide scrollbar for clean look */
-        }
-        .lens-row::-webkit-scrollbar { display: none; }
-
-        .lens-btn {
-            min-width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            border: 3px solid #fff;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            font-size: 10px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            cursor: pointer;
-            transition: transform 0.2s;
-            text-transform: uppercase;
-        }
-
-        .lens-btn:active { transform: scale(0.9); border-color: #FFFC00; }
+        .ui-container { position: absolute; bottom: 40px; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 10; }
+        .lens-row { display: flex; overflow-x: auto; width: 100%; padding: 10px 20px; gap: 15px; scrollbar-width: none; }
+        .lens-btn { min-width: 80px; height: 80px; border-radius: 50%; border: 3px solid #fff; background: rgba(255,255,255,0.2); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; text-align: center; cursor: pointer; }
+        
+        /* Hidden by default, shows only if error */
+        #retry-btn { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 30px; background: #FFFC00; color: #000; border: none; border-radius: 30px; font-weight: bold; z-index: 100; }
     </style>
 </head>
 <body>
 
+    <button id="retry-btn">Fix Black Screen</button>
     <canvas id="camera-canvas"></canvas>
 
     <div class="ui-container">
-        <div class="lens-row" id="lens-menu">
-            </div>
-        <p style="color: white; opacity: 0.6; font-size: 12px; margin-top: 15px;">Swipe for Filters</p>
+        <div class="lens-row" id="lens-menu"></div>
+        <p style="color: white; opacity: 0.5; margin-top: 10px;">Swipe for Filters</p>
     </div>
 
     <script type="module">
         import { bootstrapCameraKit } from "https://cdn.jsdelivr.net/npm/@snap/camera-kit/dist/index.js";
 
-        // Your specific credentials
         const apiToken = "eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzc2MTA2MjExLCJzdWIiOiJmNGMwMjdhYy01ZDk4LTQyYjktOWJlYy0wOTk0YTNjYmViYzR-U1RBR0lOR34xMWJhMWU5Ni00ZmQyLTQ5YTUtYjRlNi1hNjE1Yzk2Mzk0NTgifQ.RcMUmSQrsoB_lRlbyo8T8lRSxt_WYwRUl_5KxMxrzFA";
         const lensGroupId = "e7a59f58-6be3-4076-b7e4-c2bfb3567e1b";
+        
+        let session;
 
         async function startApp() {
             try {
-                // 1. Start the Camera Kit
                 const cameraKit = await bootstrapCameraKit({ apiToken });
                 const liveCanvas = document.getElementById("camera-canvas");
-                const session = await cameraKit.createSession({ liveCanvas });
+                session = await cameraKit.createSession({ liveCanvas });
 
-                // 2. Load the filters you picked in the portal
-                const lensRepository = cameraKit.lensRepository;
-                const response = await lensRepository.loadLensGroups([lensGroupId]);
-                const lenses = response[0].lenses;
-
-                // 3. Request camera access
+                // Start video with standard mobile settings
                 const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } 
+                    video: { facingMode: "user" } 
                 });
                 
                 await session.setSource(stream);
                 await session.play();
 
-                // 4. Create the menu buttons
+                // Load Lenses
+                const response = await cameraKit.lensRepository.loadLensGroups([lensGroupId]);
+                const lenses = response[0].lenses;
+
                 const menu = document.getElementById("lens-menu");
                 lenses.forEach(lens => {
                     const btn = document.createElement("div");
                     btn.className = "lens-btn";
-                    btn.innerText = lens.name || "Lens";
+                    btn.innerText = lens.name;
                     btn.onclick = () => session.applyLens(lens);
                     menu.appendChild(btn);
                 });
 
-                // Auto-apply the first filter (usually a beautifier)
                 if(lenses.length > 0) session.applyLens(lenses[0]);
 
+                // Logic to detect black screen
+                setTimeout(() => {
+                    if (session.state === 'idle') {
+                        document.getElementById('retry-btn').style.display = 'block';
+                    }
+                }, 3000);
+
             } catch (err) {
-                console.error("Camera Kit error:", err);
-                alert("Please allow camera access and ensure your URL is whitelisted in the Snap Portal.");
+                console.error(err);
+                document.getElementById('retry-btn').style.display = 'block';
+                document.getElementById('retry-btn').innerText = "Tap to Grant Camera Permission";
             }
         }
+
+        document.getElementById('retry-btn').onclick = () => location.reload();
 
         startApp();
     </script>
