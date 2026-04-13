@@ -5,81 +5,114 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Wife Cam Pro</title>
     <style>
-        body { margin: 0; background: #000; height: 100vh; overflow: hidden; font-family: sans-serif; }
-        #camera-canvas { width: 100vw; height: 100vh; object-fit: cover; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #000; height: 100vh; overflow: hidden; font-family: -apple-system, system-ui, sans-serif; }
+        #camera-canvas { width: 100vw; height: 100vh; object-fit: cover; background: #000; }
         
-        .ui-container { position: absolute; bottom: 40px; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 10; }
-        .lens-row { display: flex; overflow-x: auto; width: 100%; padding: 10px 20px; gap: 15px; scrollbar-width: none; }
-        .lens-btn { min-width: 80px; height: 80px; border-radius: 50%; border: 3px solid #fff; background: rgba(255,255,255,0.2); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; text-align: center; cursor: pointer; }
-        
-        /* Hidden by default, shows only if error */
-        #retry-btn { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 30px; background: #FFFC00; color: #000; border: none; border-radius: 30px; font-weight: bold; z-index: 100; }
+        /* The UI bar at the bottom */
+        .ui-container { 
+            position: absolute; 
+            bottom: 30px; 
+            width: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            z-index: 10; 
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            padding-bottom: 20px;
+        }
+
+        .lens-row { 
+            display: flex; 
+            overflow-x: auto; 
+            width: 100%; 
+            padding: 10px 20px; 
+            gap: 15px; 
+            scrollbar-width: none; 
+        }
+        .lens-row::-webkit-scrollbar { display: none; }
+
+        .lens-btn { 
+            min-width: 80px; 
+            height: 80px; 
+            border-radius: 50%; 
+            border: 3px solid #fff; 
+            background: rgba(255,255,255,0.15); 
+            color: #fff; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 10px; 
+            font-weight: bold; 
+            text-align: center; 
+            cursor: pointer; 
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .lens-btn:active { transform: scale(0.9); border-color: #FFFC00; }
     </style>
 </head>
 <body>
 
-    <button id="retry-btn">Fix Black Screen</button>
     <canvas id="camera-canvas"></canvas>
 
     <div class="ui-container">
-        <div class="lens-row" id="lens-menu"></div>
-        <p style="color: white; opacity: 0.5; margin-top: 10px;">Swipe for Filters</p>
+        <div class="lens-row" id="lens-menu">
+            <div style="color: white; width: 100%; text-align: center; opacity: 0.5;">Loading Lenses...</div>
+        </div>
+        <p style="color: white; opacity: 0.5; margin-top: 15px; font-size: 12px; letter-spacing: 1px;">SWIPE FOR FILTERS</p>
     </div>
 
     <script type="module">
-        import { bootstrapCameraKit } from "https://cdn.jsdelivr.net/npm/@snap/camera-kit/dist/index.js";
+        import { bootstrapCameraKit, createUserMediaSource } from "https://cdn.jsdelivr.net/npm/@snap/camera-kit/dist/index.js";
 
-        const apiToken = "eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzc2MTA2MjExLCJzdWIiOiJmNGMwMjdhYy01ZDk4LTQyYjktOWJlYy0wOTk0YTNjYmViYzR-U1RBR0lOR34xMWJhMWU5Ni00ZmQyLTQ5YTUtYjRlNi1hNjE1Yzk2Mzk0NTgifQ.RcMUmSQrsoB_lRlbyo8T8lRSxt_WYwRUl_5KxMxrzFA";
+        // YOUR PRODUCTION CREDENTIALS
+        const apiToken = "EyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzc2MTA2MjExLCJzdWIiOiJmNGMwMjdhYy01ZDk4LTQyYjktOWJlYy0wOTk0YTNjYmViYzR-U1RBR0lOR34xMWJhMWU5Ni00ZmQyLTQ5YTUtYjRlNi1hNjE1Yzk2Mzk0NTgifQ.RcMUmSQrsoB_lRlbyo8T8lRSxt_WYwRUl_5KxMxrzFA"; // Note: Re-paste if this token differs from your latest
         const lensGroupId = "e7a59f58-6be3-4076-b7e4-c2bfb3567e1b";
-        
-        let session;
 
-        async function startApp() {
+        async function init() {
             try {
+                // 1. Bootstrap the engine
                 const cameraKit = await bootstrapCameraKit({ apiToken });
                 const liveCanvas = document.getElementById("camera-canvas");
-                session = await cameraKit.createSession({ liveCanvas });
+                const session = await cameraKit.createSession({ liveCanvas });
 
-                // Start video with standard mobile settings
-                const stream = await navigator.mediaDevices.getUserMedia({ 
+                // 2. Create high-quality source (Wait for hardware)
+                const source = await createUserMediaSource({ 
                     video: { facingMode: "user" } 
                 });
                 
-                await session.setSource(stream);
-                await session.play();
+                await session.setSource(source);
+                session.play();
 
-                // Load Lenses
+                // 3. Load Lenses from your "Demo" Group
                 const response = await cameraKit.lensRepository.loadLensGroups([lensGroupId]);
                 const lenses = response[0].lenses;
 
                 const menu = document.getElementById("lens-menu");
+                menu.innerHTML = ""; // Clear loading message
+
                 lenses.forEach(lens => {
                     const btn = document.createElement("div");
                     btn.className = "lens-btn";
-                    btn.innerText = lens.name;
+                    btn.innerText = lens.name || "Filter";
                     btn.onclick = () => session.applyLens(lens);
                     menu.appendChild(btn);
                 });
 
-                if(lenses.length > 0) session.applyLens(lenses[0]);
-
-                // Logic to detect black screen
-                setTimeout(() => {
-                    if (session.state === 'idle') {
-                        document.getElementById('retry-btn').style.display = 'block';
-                    }
-                }, 3000);
+                // Auto-apply the first filter (usually the beautifier)
+                if (lenses.length > 0) await session.applyLens(lenses[0]);
 
             } catch (err) {
-                console.error(err);
-                document.getElementById('retry-btn').style.display = 'block';
-                document.getElementById('retry-btn').innerText = "Tap to Grant Camera Permission";
+                console.error("Critical Failure:", err);
+                if (err.message.includes("origin")) {
+                    alert("Origin Error: Check the Snap Portal Platform Identifiers!");
+                }
             }
         }
 
-        document.getElementById('retry-btn').onclick = () => location.reload();
-
-        startApp();
+        // Run once DOM is ready
+        window.addEventListener("DOMContentLoaded", init);
     </script>
 </body>
 </html>
