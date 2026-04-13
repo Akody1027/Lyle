@@ -3,71 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Wife Cam Debug</title>
+    <title>Personal Filter App</title>
     <style>
-        body { margin: 0; background: #000; color: white; font-family: sans-serif; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        body { margin: 0; background: #000; color: white; font-family: sans-serif; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
         #camera-canvas { width: 100vw; height: 100vh; object-fit: cover; display: none; position: fixed; top: 0; }
-        #debug-log { position: fixed; top: 10px; width: 90%; background: rgba(255,0,0,0.8); padding: 10px; font-size: 12px; border-radius: 5px; display: none; z-index: 1000; word-break: break-all; }
-        #start-btn { padding: 20px 40px; background: #FFFC00; color: #000; border: none; border-radius: 40px; font-weight: bold; font-size: 18px; z-index: 100; }
+        #start-btn { padding: 25px 50px; background: #FFFC00; color: #000; border: none; border-radius: 50px; font-weight: bold; font-size: 20px; z-index: 100; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        #error-log { position: fixed; bottom: 10px; width: 90%; background: rgba(255,0,0,0.9); padding: 15px; font-size: 13px; border-radius: 10px; display: none; z-index: 1000; white-space: pre-wrap; }
+        .ui { position: fixed; bottom: 30px; width: 100%; display: none; flex-direction: column; align-items: center; z-index: 10; }
+        .lens-row { display: flex; overflow-x: auto; width: 100%; padding: 10px; gap: 15px; scrollbar-width: none; }
+        .lens-btn { min-width: 80px; height: 80px; border-radius: 50%; border: 3px solid #fff; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
 
-    <div id="debug-log"></div>
-
-    <button id="start-btn">TAP TO START</button>
-    <p id="status" style="margin-top: 20px; opacity: 0.5;">Ready to initialize...</p>
-
+    <div id="error-log"></div>
+    <button id="start-btn">ACTIVATE CAMERA</button>
     <canvas id="camera-canvas"></canvas>
+
+    <div class="ui" id="ui-bar">
+        <div class="lens-row" id="lens-menu"></div>
+        <p style="opacity: 0.5; margin-top: 10px; font-size: 12px;">SWIPE FILTERS</p>
+    </div>
 
     <script type="module">
         import { bootstrapCameraKit, createUserMediaSource } from "https://cdn.jsdelivr.net/npm/@snap/camera-kit/dist/index.js";
 
-        // VERIFY: This must be your PRODUCTION token
-        const apiToken = "EyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzc2MTA2MjExLCJzdWIiOiJmNGMwMjdhYy01ZDk4LTQyYjktOWJlYy0wOTk0YTNjYmViYzR-UFJPRFVDVElPTn4xYTIxOTQwNy1lZmMyLTRmMTktOTAzOS1iNTE2YWE2ZDhkOTYifQ.AC0l5OekHY3FF8tmh1fEcDBPZL-wX_GCIGUO4LtrUIY";
+        // USE THE STAGING TOKEN (The one starting with eyJhbGciOiJIUzI1Ni...)
+        const apiToken = "eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzc2MTA2MjExLCJzdWIiOiJmNGMwMjdhYy01ZDk4LTQyYjktOWJlYy0wOTk0YTNjYmViYzR-U1RBR0lOR34xMWJhMWU5Ni00ZmQyLTQ5YTUtYjRlNi1hNjE1Yzk2Mzk0NTgifQ.RcMUmSQrsoB_lRlbyo8T8lRSxt_WYwRUl_5KxMxrzFA";
         const lensGroupId = "e7a59f58-6be3-4076-b7e4-c2bfb3567e1b";
 
-        const log = document.getElementById('debug-log');
-        const status = document.getElementById('status');
+        const log = document.getElementById('error-log');
         const btn = document.getElementById('start-btn');
 
-        function showError(msg) {
-            log.style.display = 'block';
-            log.innerText = "ERROR: " + msg;
-        }
-
         btn.onclick = async () => {
-            status.innerText = "Bootstrapping...";
+            btn.innerText = "Loading...";
             try {
-                // 1. Initialize SDK
-                const cameraKit = await bootstrapCameraKit({ apiToken }).catch(e => { throw new Error("SDK Bootstrap Failed: " + e.message) });
-                
-                // 2. Create Session
+                // 1. Initialize
+                const cameraKit = await bootstrapCameraKit({ apiToken });
                 const liveCanvas = document.getElementById("camera-canvas");
                 const session = await cameraKit.createSession({ liveCanvas });
-                status.innerText = "Session Created. Accessing Camera...";
 
-                // 3. Get Camera
-                const source = await createUserMediaSource({ video: { facingMode: "user" } }).catch(e => { throw new Error("Camera Access Denied: " + e.message) });
+                // 2. Camera Access
+                const source = await createUserMediaSource({ video: { facingMode: "user" } });
                 await session.setSource(source);
-                session.play();
+                await session.play();
                 
-                // 4. Load Lenses
-                status.innerText = "Loading Lens Group...";
-                const response = await cameraKit.lensRepository.loadLensGroups([lensGroupId]).catch(e => { throw new Error("Lens Group Failed: " + e.message) });
-                
-                if (response[0].lenses.length > 0) {
-                    await session.applyLens(response[0].lenses[0]);
-                    btn.style.display = 'none';
-                    status.style.display = 'none';
-                    liveCanvas.style.display = 'block';
-                } else {
-                    showError("No lenses found in this group.");
-                }
+                // 3. Load Lenses
+                const response = await cameraKit.lensRepository.loadLensGroups([lensGroupId]);
+                const lenses = response[0].lenses;
+
+                if (lenses.length === 0) throw new Error("Lens group is empty!");
+
+                const menu = document.getElementById("lens-menu");
+                lenses.forEach(lens => {
+                    const lBtn = document.createElement("div");
+                    lBtn.className = "lens-btn";
+                    lBtn.innerText = lens.name;
+                    lBtn.onclick = () => session.applyLens(lens);
+                    menu.appendChild(lBtn);
+                });
+
+                // 4. Apply & Reveal
+                await session.applyLens(lenses[0]);
+                btn.style.display = 'none';
+                liveCanvas.style.display = 'block';
+                document.getElementById('ui-bar').style.display = 'flex';
 
             } catch (err) {
-                showError(err.message);
-                console.error(err);
+                log.style.display = 'block';
+                log.innerText = "CRITICAL ERROR:\n" + err.message + "\n\nTip: Ensure you added your Snapchat username to 'Demo Users' in the portal.";
+                btn.innerText = "FAILED";
             }
         };
     </script>
